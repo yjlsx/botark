@@ -11,7 +11,7 @@ jobs:
     runs-on: macos-15-intel
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -31,7 +31,7 @@ jobs:
           app="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/BotArk.app"
           plutil -lint "$app/Info.plist"
           executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")
-          lipo -verify_arch arm64 "$app/$executable"
+          lipo "$app/$executable" -verify_arch arm64
           cd "$RUNNER_TEMP"
           mkdir Payload
           ditto "$app" Payload/BotArk.app
@@ -39,7 +39,7 @@ jobs:
           unzip -tq BotArk-unsigned.ipa
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: BotArk-unsigned-IPA
           path: ${{ runner.temp }}/BotArk-unsigned.ipa
