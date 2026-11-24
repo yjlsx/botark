@@ -1,0 +1,46 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build the iOS device app
+        run: |
+          xcodebuild -version
+          xcodebuild build \
+            -project ios/BotArk/BotArk.xcodeproj \
+            -scheme BotArk \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package and check the unsigned IPA
+        run: |
+          app="$RUNNER_TEMP/DerivedData/Build/Products/Release-iphoneos/BotArk.app"
+          plutil -lint "$app/Info.plist"
+          executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")
+          lipo -verify_arch arm64 "$app/$executable"
+          cd "$RUNNER_TEMP"
+          mkdir Payload
+          ditto "$app" Payload/BotArk.app
+          /usr/bin/zip -qry BotArk-unsigned.ipa Payload
+          unzip -tq BotArk-unsigned.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: BotArk-unsigned-IPA
+          path: ${{ runner.temp }}/BotArk-unsigned.ipa
+          if-no-files-found: error
